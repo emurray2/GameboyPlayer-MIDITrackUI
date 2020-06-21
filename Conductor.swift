@@ -12,10 +12,14 @@ class Conductor {
     
     static let shared = Conductor()
     
-    var sampler: MIDIPlayerInstrument
+    var sampler: AKSampler
+    var midiData: AKMIDIFile!
     var midiFile: AKAppleSequencer!
+    var midiFileDescriptor: MIDIFileDescriptor!
     var midiFileConnector: AKMIDINode!
     var importedMIDIURL: URL!
+    
+    var lastMIDINote: Double!
     
     init() {
         
@@ -25,7 +29,7 @@ class Conductor {
         
         AKSettings.bufferLength = .short
         
-        sampler = MIDIPlayerInstrument()
+        sampler = AKSampler()
         
         AudioKit.output = sampler
         do {
@@ -36,46 +40,22 @@ class Conductor {
         
     }
     
-    func playSound() {
+    func setupMIDI() {
         midiFile = AKAppleSequencer(fromURL: importedMIDIURL)
+        midiData = AKMIDIFile(url: importedMIDIURL)
+        midiFileDescriptor = MIDIFileDescriptor(midiFile: midiData)
         midiFileConnector = AKMIDINode(node: sampler)
         midiFile.setGlobalMIDIOutput(midiFileConnector.midiIn)
+        
+        //lastMIDINote = midiFileDescriptor.finalNoteList[self.midiFileDescriptor.finalNoteList.count - 1].noteOffPosition
+    }
+    
+    func playSound() {
         midiFile.play()
     }
     
     func loadSamples() {
         sampler.loadSFZ2(url: Bundle.main.url(forResource: "Gameboy", withExtension: "sfz")!)
-    }
-    
-}
-
-class MIDIPlayerInstrument: AKSampler {
-    
-    override func play(noteNumber: MIDINoteNumber, velocity: MIDIVelocity, channel: MIDIChannel = 0) {
-        
-        DispatchQueue.main.async {
-            buttonDict[Int(noteNumber) - 49]?.color = .red
-        }
-        
-        let gqueue = DispatchQueue(label: "graphics-queue", qos: .userInteractive)
-        
-        gqueue.async {
-            super.play(noteNumber: noteNumber, velocity: velocity)
-        }
-    }
-    
-    override func stop(noteNumber: MIDINoteNumber) {
-        
-        DispatchQueue.main.async {
-            buttonDict[Int(noteNumber) - 49]?.color = .blue
-        }
-        
-        let gqueue = DispatchQueue(label: "graphics-queue", qos: .userInteractive)
-        
-        gqueue.async {
-            super.stop(noteNumber: noteNumber)
-        }
-        
     }
     
 }
